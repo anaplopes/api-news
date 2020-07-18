@@ -1,7 +1,7 @@
 {
-    "name": "api",
+    "name": "api-news",
     "version": "1.0.0",
-    "description": "descrição",
+    "description": "Api crud de notícias",
     "engines": {
       "python": "3.8.2",
       "flask": "1.1.2"

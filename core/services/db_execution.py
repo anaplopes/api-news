@@ -1,4 +1,6 @@
-from bson import ObjectId
+# -*- coding: utf-8 -*-
+from datetime import datetime
+from bson.objectid import ObjectId
 from core.services.db_connection import DbConnectionService
 
 
@@ -9,22 +11,29 @@ class DbExecutionService:
         self.db = DbConnectionService()
     
     
-    def __map(self, row):
-        row['_id'] = str(row['_id'])
+    def __convert_data(self, row):
+        for i in row:
+            if isinstance(row[i], ObjectId):
+                row[i] = str(row[i])
+                
+            if isinstance(row[i], datetime):
+                row[i] = row[i].strftime("%Y-%m-%dT%H:%M:%S.%f%z")
+                
         return row
     
     
-    def list(self, collection, search, sort=None, sequence=1):
-        if not isinstance(search, dict):
-            raise TypeError('search must be a object')
+    def find(self, collection, param={}, sort=None, sequence=1):
+        if not isinstance(param, dict):
+            raise TypeError('param must be a object')
         
         session = self.db.create_connection(collection)
         if sort:
-            return list(map(self.__map, session.find(search).sort(sort, sequence)))
-        return list(map(self.__map, session.find(search)))
+            return list(map(self.__convert_data, session.find(param).sort(sort, sequence)))
+        # return list(map(lambda row: {i: str(row[i]) if isinstance(row[i], ObjectId) else row[i] for i in row}, session.find(param)))
+        return list(map(self.__convert_data, session.find(param))) 
     
     
-    def create(self, collection, data):
+    def insert_one(self, collection, data):
         if not isinstance(data, dict):
             raise TypeError('data must be a object.')
             
@@ -32,18 +41,19 @@ class DbExecutionService:
         return session.insert_one(data)
     
     
-    def read(self, collection, id):
-        if not isinstance(id, str):
-            raise TypeError('id must be a string')
-        
+    def find_one(self, collection, id, param=None):
         session = self.db.create_connection(collection)
-        return session.find_one({'_id': ObjectId(id)})
-    
-    
-    def update(self, collection, id, data):
-        if not isinstance(id, str):
-            raise TypeError('id must be a string')
+        search = {'_id': ObjectId(id)}
+        if param:
+            search.update(param)
         
+        result = session.find_one(search)
+        if not result:
+            return result
+        return self.__convert_data(result)
+    
+    
+    def update_one(self, collection, id, data):
         if not isinstance(data, dict):
             raise TypeError('data must be a object')
         
@@ -52,8 +62,5 @@ class DbExecutionService:
     
     
     def delete(self, collection, id):
-        if not isinstance(id, str):
-            raise TypeError('id must be a string')
-        
         session = self.db.create_connection(collection)
         return session.delete_one({'_id': ObjectId(id)})

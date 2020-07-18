@@ -2,125 +2,82 @@
 import sys
 import json
 import traceback
+from datetime import datetime
 from flask.views import MethodView
 from flask import Blueprint, jsonify, request
-from core.services.db_execution import DbExecutionService
+from core.services.worker_news import WorkerNewsService
 
 
 bp_news = Blueprint('news', __name__, url_prefix='/api')
 class News(MethodView):
     
     def __init__(self):
-        self.db = DbExecutionService()
+        self.worker = WorkerNewsService()
 
 
     def get(self, id=None):
-        response = {
-            'content': None,
-            'message': None,
-            'isValid': True,
-            'error': None
-        }
-        
         try:
             if id is None:
-                response['content'] = self.db.list(collection='news', search={})
-            
+                response = self.worker.list()
             else:
-                content = self.db.read(collection='news', id=id)
-                if not content:
-                    response['message'] = 'Não foi localizado nenhum registro com esse id.'
-                    return jsonify(response), 404
-                
-                response['content'] = content
-            
-            return jsonify(response), 200
+                response = self.worker.read(id=id)
+            return jsonify({'output': response['output']}), response['statusCode']
             
         except Exception:
-            response['error'] = traceback.format_exc()
-            response['isValid'] = False
-            print(response, file=sys.stderr)
-            return jsonify(response), 500
+            return jsonify({
+                'output': {
+                    'data': [],
+                    'error': traceback.format_exc(),
+                    'isValid': False
+                }
+            }), 500
 
 
     def post(self):
-        response = {
-            'message': None,
-            'isValid': True,
-            'error': None
-        }
-        
         try:
             payload = request.get_json()
-            if payload:
-                payload['isActive'] = True
-                self.db.create(collection='news', data=payload)
-                response['message'] = 'Notícia salva com sucesso.'
-                return jsonify(response), 200
+            response = self.worker.create(payload=payload)
+            return jsonify({'output': response['output']}), response['statusCode']
             
         except Exception:
-            response['error'] = traceback.format_exc()
-            response['isValid'] = False
-            print(response, file=sys.stderr)
-            return jsonify(response), 500
+            return jsonify({
+                'output': {
+                    'data': [],
+                    'error': traceback.format_exc(),
+                    'isValid': False
+                }
+            }), 500
 
 
     def put(self, id):
-        response = {
-            'message': None,
-            'isValid': True,
-            'error': None
-        }
-        
         try:
-            if not id:
-                response['message'] = 'id não localizado'
-                return jsonify(response), 400
-            
-            content = self.db.read(collection='news', id=id)
-            if not content:
-                response['message'] = 'Não foi localizado nenhum registro com esse id.'
-                return jsonify(response), 404
-            
             payload = request.get_json()
-            if payload:
-                self.db.update(collection='news', id=id, data=payload)
-                response['message'] = 'Notícia atualizada com sucesso.'
-                return jsonify(response), 200
+            response = self.worker.update(id=id, payload=payload)
+            return jsonify({'output': response['output']}), response['statusCode']
             
         except Exception:
-            response['error'] = traceback.format_exc()
-            response['isValid'] = False
-            print(response, file=sys.stderr)
-            return jsonify(response), 500
+            return jsonify({
+                'output': {
+                    'data': [],
+                    'error': traceback.format_exc(),
+                    'isValid': False
+                }
+            }), 500
         
         
     def delete(self, id):
-        response = {
-            'message': None,
-            'isValid': True,
-            'error': None
-        }
-        
         try:
-            if not id:
-                response['message'] = 'id não localizado'
-                return jsonify(response), 400
-            
-            content = self.db.read(collection='news', id=id)
-            if not content:
-                response['message'] = 'Não foi localizado nenhum registro com esse id.'
-                return jsonify(response), 404
-            
-            self.db.update(collection='news', id=id, data={'isActive': True})
-            response['message'] = 'Notícia excluída com sucesso.'
-            return jsonify(response), 200
+            response = self.worker.delete(id=id)
+            return jsonify({'output': response['output']}), response['statusCode']
             
         except Exception:
-            response['error'] = traceback.format_exc()
-            response['isValid'] = False
-            print(response, file=sys.stderr)
-            return jsonify(response), 500
+            return jsonify({
+                'output': {
+                    'data': [],
+                    'error': traceback.format_exc(),
+                    'isValid': False
+                }
+            }), 500
 
 
 view = News.as_view('news')
